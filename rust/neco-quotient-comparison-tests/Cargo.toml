@@ -1,0 +1,9 @@
+[package]
+name = "neco-quotient-comparison-tests"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+neco-quotient-certificate = { path = "../neco-quotient-certificate" }
+neco-quotient-encoding = { path = "../neco-quotient-encoding" }

@@ -1,0 +1,1 @@
+[{"accepted":true,"name":"residual_order_and_duplicates","residuals":["residual-a","residual-b"]},{"accepted":false,"failure":{"operation":"admit","origin":{"rule_revision":"comparison/sha256@1","source_identity":"source-alpha","source_revision":"rev-1"},"stage":"residual"},"name":"residual_membership","residuals":["residual-a","residual-c"]}]

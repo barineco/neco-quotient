@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "neco-quotient-encoding",
+    "neco-quotient-certificate",
+    "neco-quotient-retention",
+    "neco-quotient-comparison-tests",
+]
+resolver = "2"

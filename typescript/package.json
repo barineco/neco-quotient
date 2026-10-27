@@ -1,0 +1,34 @@
+{
+  "name": "neco-quotient-certificate",
+  "version": "0.1.0",
+  "description": "観測による同一視の証明書を期待値と照合する",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barineco/neco-quotient.git",
+    "directory": "typescript"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "build": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "node --test --test-concurrency=2 test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

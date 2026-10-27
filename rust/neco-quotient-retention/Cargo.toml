@@ -1,0 +1,10 @@
+[package]
+name = "neco-quotient-retention"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "宣言された利用と復元可能性から、商の値を保持するか実体化解除するかを判定する"
+repository = "https://github.com/barineco/neco-quotient"
+
+[dependencies]

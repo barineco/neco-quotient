@@ -1,0 +1,12 @@
+[package]
+name = "neco-quotient-encoding"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "証明書の正規 JSON の符号化と SHA-256 ダイジェスト"
+repository = "https://github.com/barineco/neco-quotient"
+
+[dependencies]
+neco-json = "0.1.3"
+sha2 = "0.10"

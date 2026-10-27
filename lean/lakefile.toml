@@ -1,0 +1,15 @@
+name = "NecoQuotient"
+version = "0.1.0"
+defaultTargets = ["NecoQuotient", "Comparison"]
+
+[[lean_lib]]
+name = "NecoQuotient"
+globs = ["NecoQuotient", "NecoQuotient.+"]
+
+[[lean_lib]]
+name = "Comparison"
+globs = ["Comparison.+"]
+
+[[lean_exe]]
+name = "certificate_compare"
+root = "Comparison.Main"
