@@ -8,6 +8,7 @@ import {
   type Expected,
   type ProjectionDigest,
   type Rule,
+  projectionDigests,
   residualSet,
 } from "../src/index.ts";
 
@@ -23,11 +24,10 @@ const residualB = Symbol("residual-b");
 
 const rule: Rule<Identity, bigint, Coordinate, boolean, Evidence> = (source, coordinate, observations, evidence) => {
   const digest: ProjectionDigest = {
-    projection: "payload",
     digest: `${source.identity.id}:${String(source.revision)}:${coordinate[0]},${coordinate[1]}:${String(observations)}:${evidence.join(".")}`,
     scope: { kind: "within_runtime", runtime: "node" },
   };
-  return [digest];
+  return { payload: digest };
 };
 
 const comparison: Comparison<Identity, bigint, Coordinate, boolean, symbol> = {
@@ -53,7 +53,7 @@ function certificate(): Cert {
     ruleRevision: "rule@1",
     source,
     coordinate: [4, 5],
-    digests: rule(source, [4, 5], true, evidence),
+    digests: projectionDigests(rule(source, [4, 5], true, evidence)),
     residuals: residualSet([residualA]),
     observations: true,
     evidence,
@@ -76,7 +76,7 @@ describe("admit accepts identity, revision, coordinate, observations and residua
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.value.source, { identity: { id: 7 }, revision: 11n });
-    assert.equal(result.value.recomputed[0]?.digest, "7:11:4,5:true:1.2.3");
+    assert.equal(result.value.recomputed.get("payload")?.digest, "7:11:4,5:true:1.2.3");
   });
 
   it("reports a bigint revision difference at source with origin rendered by the caller", () => {
@@ -84,9 +84,11 @@ describe("admit accepts identity, revision, coordinate, observations and residua
     const result = admit(table(), shifted, expected(), "caller", comparison);
     assert.equal(result.ok, false);
     if (result.ok) return;
-    assert.equal(result.error.stage, "source");
-    assert.equal(result.error.expected, "id:7@r11");
-    assert.equal(result.error.actual, "id:7@r12");
+    const source = result.error.checks.source;
+    assert.equal(source.kind, "failed");
+    if (source.kind !== "failed") return;
+    assert.equal(source.failure.expected, "id:7@r11");
+    assert.equal(source.failure.actual, "id:7@r12");
     assert.deepEqual(result.error.origin, { ruleRevision: "rule@1", sourceIdentity: "id:7", sourceRevision: "r12" });
   });
 
@@ -95,7 +97,8 @@ describe("admit accepts identity, revision, coordinate, observations and residua
     const result = admit(table(), changed, expected(), "caller", comparison);
     assert.equal(result.ok, false);
     if (result.ok) return;
-    assert.equal(result.error.stage, "residual");
+    assert.equal(result.error.statusAt("residual").kind, "mismatched");
+    assert.equal(result.error.statusAt("source").kind, "matched");
   });
 });
 
@@ -106,13 +109,12 @@ type Code = { readonly code: string };
 type RecordCert = Certificate<Identity, Ordinal, Coordinate, Enabled, Code, Evidence>;
 type RecordExp = Expected<Identity, Ordinal, Coordinate, Enabled, Code>;
 
-const recordRule: Rule<Identity, Ordinal, Coordinate, Enabled, Evidence> = (source, coordinate, observations, evidence) => [
-  {
-    projection: "record",
+const recordRule: Rule<Identity, Ordinal, Coordinate, Enabled, Evidence> = (source, coordinate, observations, evidence) => ({
+  record: {
     digest: `${source.identity.id}:${source.revision.ordinal.toString()}:${coordinate[0]},${coordinate[1]}:${String(observations.enabled)}:${evidence.join(".")}`,
     scope: { kind: "within_runtime", runtime: "node" },
   },
-];
+});
 
 const recordComparison: Comparison<Identity, Ordinal, Coordinate, Enabled, Code> = {
   sameSource: (left, right) => left.id === right.id,
@@ -139,7 +141,7 @@ function recordCertificate(ordinal: bigint, enabled: boolean, code: string): Rec
     ruleRevision: "rule@1",
     source,
     coordinate,
-    digests: recordRule(source, coordinate, observations, evidence),
+    digests: projectionDigests(recordRule(source, coordinate, observations, evidence)),
     residuals: residualSet([{ code }]),
     observations,
     evidence,
@@ -157,25 +159,27 @@ function recordExpected(ordinal: bigint, enabled: boolean, code: string): Record
 }
 
 describe("admit compares record revision, observations and residual by the value of their single field", () => {
-  it("accepts distinct instances with equal field values and rejects each differing field at its stage", () => {
+  it("accepts distinct instances with equal field values and rejects each differing field at its condition", () => {
     const accepted = admit(recordTable(), recordCertificate(11n, true, "a"), recordExpected(11n, true, "a"), "caller", recordComparison);
     assert.equal(accepted.ok, true);
-    if (accepted.ok) assert.equal(accepted.value.recomputed[0]?.digest, "7:11:4,5:true:1.2.3");
+    if (accepted.ok) assert.equal(accepted.value.recomputed.get("record")?.digest, "7:11:4,5:true:1.2.3");
 
     const revision = admit(recordTable(), recordCertificate(12n, true, "a"), recordExpected(11n, true, "a"), "caller", recordComparison);
     assert.equal(revision.ok, false);
     if (!revision.ok) {
-      assert.equal(revision.error.stage, "source");
-      assert.equal(revision.error.expected, "id:7@o11");
-      assert.equal(revision.error.actual, "id:7@o12");
+      assert.equal(revision.error.checks.source.kind, "failed");
+      if (revision.error.checks.source.kind === "failed") {
+        assert.equal(revision.error.checks.source.failure.expected, "id:7@o11");
+        assert.equal(revision.error.checks.source.failure.actual, "id:7@o12");
+      }
     }
 
     const observations = admit(recordTable(), recordCertificate(11n, false, "a"), recordExpected(11n, true, "a"), "caller", recordComparison);
     assert.equal(observations.ok, false);
-    if (!observations.ok) assert.equal(observations.error.stage, "observations");
+    if (!observations.ok) assert.equal(observations.error.statusAt("observations").kind, "mismatched");
 
     const residual = admit(recordTable(), recordCertificate(11n, true, "b"), recordExpected(11n, true, "a"), "caller", recordComparison);
     assert.equal(residual.ok, false);
-    if (!residual.ok) assert.equal(residual.error.stage, "residual");
+    if (!residual.ok) assert.equal(residual.error.statusAt("residual").kind, "mismatched");
   });
 });

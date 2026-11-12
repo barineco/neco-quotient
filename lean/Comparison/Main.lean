@@ -2,7 +2,6 @@ import Lean.Data.Json
 import Comparison.Admission
 import Comparison.Cases
 
-/-- 事例の JSON を読み、実際の照合の結果を標準の JSON の正規の表記で書く -/
 def main (args : List String) : IO UInt32 := do
   match args with
   | [casesPath, outcomesPath] =>

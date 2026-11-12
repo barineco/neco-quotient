@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
+
 use neco_quotient_encoding::{
-    decode_canonical, CertificateWire, DigestScope, EncodingCondition, EncodingFailure, JsonValue,
-    ProjectionDigestWire, SourceRefWire,
+    decode_canonical, CertificateWire, EncodingCondition, EncodingFailure, JsonValue, SourceRefWire,
 };
 
 fn text(value: &str) -> JsonValue {
@@ -15,10 +16,30 @@ fn certificate(residuals: Vec<JsonValue>) -> CertificateWire {
             revision: "v".into(),
         },
         coordinate: JsonValue::Null,
-        digests: vec![],
+        digests: BTreeMap::new(),
         residuals,
         observations: JsonValue::Null,
         evidence: JsonValue::Null,
+    }
+}
+
+fn digest_value(fill: char) -> JsonValue {
+    JsonValue::Object(vec![
+        ("digest".into(), text(&fill.to_string().repeat(64))),
+        (
+            "scope".into(),
+            JsonValue::Object(vec![("within_runtime".into(), text("rust"))]),
+        ),
+    ])
+}
+
+fn set_field(value: &mut JsonValue, key: &str, replacement: JsonValue) {
+    if let JsonValue::Object(fields) = value {
+        for (name, child) in fields.iter_mut() {
+            if name == key {
+                *child = replacement.clone();
+            }
+        }
     }
 }
 
@@ -84,7 +105,7 @@ fn missing_field_is_reported() -> Result<(), EncodingFailure> {
             ]),
         ),
         ("coordinate".into(), JsonValue::Null),
-        ("digests".into(), JsonValue::Array(vec![])),
+        ("digests".into(), JsonValue::Object(vec![])),
         ("residuals".into(), JsonValue::Array(vec![])),
         ("evidence".into(), JsonValue::Null),
     ]);
@@ -155,24 +176,6 @@ fn non_normal_residuals_are_rejected_by_to_value() -> Result<(), EncodingFailure
     Ok(())
 }
 
-fn set_field(value: &mut JsonValue, key: &str, replacement: JsonValue) {
-    if let JsonValue::Object(fields) = value {
-        for (name, child) in fields.iter_mut() {
-            if name == key {
-                *child = replacement.clone();
-            }
-        }
-    }
-}
-
-fn digest(projection: &str, fill: char) -> ProjectionDigestWire {
-    ProjectionDigestWire {
-        projection: projection.into(),
-        digest: fill.to_string().repeat(64),
-        scope: DigestScope::WithinRuntime("rust".into()),
-    }
-}
-
 #[test]
 fn duplicate_key_certificate_is_rejected_by_from_value() -> Result<(), EncodingFailure> {
     let mut value = certificate(vec![]).to_value()?;
@@ -235,14 +238,126 @@ fn number_in_coordinate_is_rejected_by_from_value() -> Result<(), EncodingFailur
 }
 
 #[test]
-fn non_normal_digests_are_rejected_by_to_value() -> Result<(), EncodingFailure> {
-    let mut wire = certificate(vec![]);
-    wire.digests = vec![digest("p2", 'b'), digest("p1", 'a')];
-    let result = wire.to_value();
-    assert_eq!(
-        result.err().map(|failure| failure.condition_name()),
-        Some("digests_not_normalized")
+fn digests_as_array_are_rejected_by_from_value() -> Result<(), EncodingFailure> {
+    let mut value = certificate(vec![]).to_value()?;
+    set_field(
+        &mut value,
+        "digests",
+        JsonValue::Array(vec![JsonValue::Object(vec![
+            ("digest".into(), text(&"a".repeat(64))),
+            ("projection".into(), text("p1")),
+            (
+                "scope".into(),
+                JsonValue::Object(vec![("within_runtime".into(), text("rust"))]),
+            ),
+        ])]),
     );
+    let result = CertificateWire::from_value(&value);
+    assert!(matches!(
+        result,
+        Err(EncodingFailure {
+            operation: "from_value",
+            condition: EncodingCondition::UnexpectedShape {
+                field: "digests",
+                expected: "object",
+                ..
+            },
+            ..
+        })
+    ));
+    Ok(())
+}
+
+#[test]
+fn duplicate_digest_name_is_rejected_before_map_conversion() -> Result<(), EncodingFailure> {
+    let mut value = certificate(vec![]).to_value()?;
+    set_field(
+        &mut value,
+        "digests",
+        JsonValue::Object(vec![
+            ("p1".into(), digest_value('a')),
+            ("p1".into(), digest_value('b')),
+        ]),
+    );
+    let result = CertificateWire::from_value(&value);
+    assert!(matches!(
+        result,
+        Err(EncodingFailure {
+            operation: "from_value",
+            condition: EncodingCondition::DuplicateKey { ref path, ref key },
+            ..
+        }) if path == "digests" && key == "p1"
+    ));
+    Ok(())
+}
+
+#[test]
+fn projection_field_inside_a_digest_entry_is_rejected() -> Result<(), EncodingFailure> {
+    let mut entry = digest_value('a');
+    if let JsonValue::Object(fields) = &mut entry {
+        fields.push(("projection".into(), text("p1")));
+    }
+    let mut value = certificate(vec![]).to_value()?;
+    set_field(
+        &mut value,
+        "digests",
+        JsonValue::Object(vec![("p1".into(), entry)]),
+    );
+    let result = CertificateWire::from_value(&value);
+    assert!(matches!(
+        result,
+        Err(EncodingFailure {
+            condition: EncodingCondition::UnknownField { ref field },
+            ..
+        }) if field == "projection"
+    ));
+    Ok(())
+}
+
+#[test]
+fn digest_entry_without_scope_is_reported_as_missing() -> Result<(), EncodingFailure> {
+    let entry = JsonValue::Object(vec![("digest".into(), text(&"a".repeat(64)))]);
+    let mut value = certificate(vec![]).to_value()?;
+    set_field(
+        &mut value,
+        "digests",
+        JsonValue::Object(vec![("p1".into(), entry)]),
+    );
+    let result = CertificateWire::from_value(&value);
+    assert!(matches!(
+        result,
+        Err(EncodingFailure {
+            condition: EncodingCondition::MissingField { field: "scope" },
+            ..
+        })
+    ));
+    Ok(())
+}
+
+#[test]
+fn digest_scope_with_two_kinds_is_rejected() -> Result<(), EncodingFailure> {
+    let scope = JsonValue::Object(vec![
+        ("within_runtime".into(), text("rust")),
+        ("cross_language".into(), text("sha256")),
+    ]);
+    let entry = JsonValue::Object(vec![
+        ("digest".into(), text(&"a".repeat(64))),
+        ("scope".into(), scope),
+    ]);
+    let mut value = certificate(vec![]).to_value()?;
+    set_field(
+        &mut value,
+        "digests",
+        JsonValue::Object(vec![("p1".into(), entry)]),
+    );
+    let result = CertificateWire::from_value(&value);
+    assert!(matches!(
+        result,
+        Err(EncodingFailure {
+            condition: EncodingCondition::UnexpectedShape { field: "scope", .. },
+            ..
+        })
+    ));
     Ok(())
 }
 

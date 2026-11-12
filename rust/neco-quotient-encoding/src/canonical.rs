@@ -2,8 +2,6 @@ use neco_json::JsonValue;
 
 use crate::failure::{EncodingCondition, EncodingFailure};
 
-/// Returns the canonical bytes of the value: sorted object keys, no whitespace.
-/// Numbers and duplicate keys are rejected.
 pub fn canonical_bytes(value: &JsonValue) -> Result<Vec<u8>, EncodingFailure> {
     let mut out = Vec::new();
     write_canonical(value, "$", &mut out)
@@ -11,8 +9,6 @@ pub fn canonical_bytes(value: &JsonValue) -> Result<Vec<u8>, EncodingFailure> {
     Ok(out)
 }
 
-/// Parses the bytes and returns the value when the bytes are already canonical.
-/// Returns `EncodingCondition::NotCanonical` when canonical re-encoding differs from the input bytes.
 pub fn decode_canonical(bytes: &[u8]) -> Result<JsonValue, EncodingFailure> {
     let parsed = neco_json::parse(bytes).map_err(|error| {
         EncodingFailure::new(

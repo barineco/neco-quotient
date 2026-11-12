@@ -1,9 +1,9 @@
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-
+from types import MappingProxyType
 
 @dataclass(frozen=True, init=False, eq=False)
 class ResidualSet[R]:
-    """要素の所属で同一性を決める残余集合。"""
 
     values: tuple[R, ...]
 
@@ -27,73 +27,56 @@ class ResidualSet[R]:
     def __repr__(self) -> str:
         return f"ResidualSet({self.values!r})"
 
-
 @dataclass(frozen=True)
 class SourceRef[S, Rev]:
-    """証明書が記述する入力の識別子とリビジョン。"""
 
     identity: S
     revision: Rev
 
-
 @dataclass(frozen=True)
 class WithinRuntime:
-    """同じ実行系の中でだけ 射影ダイジェストを比べられる範囲。"""
 
     name: str
-
 
 @dataclass(frozen=True)
 class CrossLanguage:
-    """言語をまたいで 射影ダイジェストを比べられる範囲。"""
 
     name: str
 
-
 type DigestScope = WithinRuntime | CrossLanguage
-
 
 @dataclass(frozen=True)
 class ProjectionDigest:
-    """入力の一つの射影ダイジェスト。"""
 
-    projection: str
     digest: str
     scope: DigestScope
 
+def _frozen_digests(digests: Mapping[str, ProjectionDigest]) -> Mapping[str, ProjectionDigest]:
+    return MappingProxyType(dict(digests))
 
 @dataclass(frozen=True)
 class Certificate[S, Rev, C, Obs, R, E]:
-    """照合に提出する証明書。
-
-    構築時に digests を tuple へ写し、residuals を集合として保つ。
-    """
 
     rule_revision: str
     source: SourceRef[S, Rev]
     coordinate: C
-    digests: tuple[ProjectionDigest, ...]
-    residuals: ResidualSet[R]
+    digests: Mapping[str, ProjectionDigest]
+    residuals: ResidualSet[R] | Iterable[R]
     observations: Obs
     evidence: E
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "digests", tuple(self.digests))
+        object.__setattr__(self, "digests", _frozen_digests(self.digests))
         object.__setattr__(self, "residuals", ResidualSet(self.residuals))
-
 
 @dataclass(frozen=True)
 class Expected[S, Rev, C, Obs, R]:
-    """証明書を照合する期待値。
-
-    構築時に residuals を集合として保つ。
-    """
 
     rule_revision: str
     source: SourceRef[S, Rev]
     coordinate: C
     observations: Obs
-    residuals: ResidualSet[R]
+    residuals: ResidualSet[R] | Iterable[R]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "residuals", ResidualSet(self.residuals))

@@ -172,28 +172,28 @@ mod tests {
     fn retained(decision: Decision) -> Vec<RetentionReason<Id, Basis, Obs>> {
         match decision {
             ErasureDecision::Retain(reasons) => reasons,
-            _ => panic!("Retain を期待した"),
+            _ => panic!("the decision is expected to be Retain"),
         }
     }
 
     fn rejected(decision: Decision) -> MissingInput {
         match decision {
             ErasureDecision::Rejected(missing) => missing,
-            _ => panic!("Rejected を期待した"),
+            _ => panic!("the decision is expected to be Rejected"),
         }
     }
 
     fn dematerialized(decision: Decision) -> DematerializeWitness<Id, Opaque, Opaque, Obs> {
         match decision {
             ErasureDecision::Dematerialize(witness) => witness,
-            _ => panic!("Dematerialize を期待した"),
+            _ => panic!("the decision is expected to be Dematerialize"),
         }
     }
 
     fn source_key(witness: &DematerializeWitness<Id, Opaque, Opaque, Obs>) -> &'static str {
         match &witness.recoverability {
             Recoverability::Source(key) => key.0,
-            _ => panic!("Source を期待した"),
+            _ => panic!("the recoverability is expected to be Source"),
         }
     }
 
@@ -485,7 +485,7 @@ mod tests {
                 assert_eq!(checkpoint.0, "checkpoint-ref");
                 assert_eq!(witness.0, "checkpoint-proof");
             }
-            _ => panic!("Checkpoint を期待した"),
+            _ => panic!("the recoverability is expected to be Checkpoint"),
         }
     }
 
@@ -504,7 +504,7 @@ mod tests {
             Recoverability::Replay { derivation } => {
                 assert_eq!(derivation.0, "derivation-proof");
             }
-            _ => panic!("Replay を期待した"),
+            _ => panic!("the recoverability is expected to be Replay"),
         }
     }
 

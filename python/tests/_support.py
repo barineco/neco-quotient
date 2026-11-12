@@ -3,6 +3,7 @@ from pathlib import Path
 
 from neco_quotient_certificate import (
     Certificate,
+    Condition,
     CrossLanguage,
     Expected,
     ProjectionDigest,
@@ -10,17 +11,14 @@ from neco_quotient_certificate import (
     SourceRef,
 )
 
-
 REVISION = "rule@1"
-STAGES = ("decode", "source", "coordinate", "observations", "digest", "residual")
+CONDITIONS = tuple(Condition)
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 COMPARISON_DIR = REPOSITORY_ROOT / "comparison" / "certificate-admit"
 
-
 def sample_rule(source, coordinate, observations, evidence):
     digest = f"{source.identity}:{source.revision}:{coordinate}:{observations}:{evidence}"
-    return (ProjectionDigest("evidence", digest, CrossLanguage("sha256")),)
-
+    return {"evidence": ProjectionDigest(digest, CrossLanguage("sha256"))}
 
 def sample_certificate():
     return Certificate(
@@ -35,7 +33,6 @@ def sample_certificate():
         evidence="evidence-a",
     )
 
-
 def sample_expected():
     return Expected(
         rule_revision=REVISION,
@@ -45,29 +42,26 @@ def sample_expected():
         residuals=("residual-a", "residual-b"),
     )
 
-
 def sample_table():
     table = RuleTable.of([(REVISION, sample_rule)])
     assert isinstance(table, RuleTable)
     return table
 
-
-def break_stage(certificate, stage):
-    if stage == "source":
+def break_condition(certificate, condition):
+    if condition is Condition.SOURCE:
         return dataclasses.replace(certificate, source=SourceRef("source-beta", "rev-1"))
-    if stage == "coordinate":
+    if condition is Condition.COORDINATE:
         return dataclasses.replace(certificate, coordinate="coord-b")
-    if stage == "observations":
+    if condition is Condition.OBSERVATIONS:
         return dataclasses.replace(certificate, observations="observations-b")
-    if stage == "digest":
+    if condition is Condition.DIGEST:
         return dataclasses.replace(
             certificate,
-            digests=(ProjectionDigest("evidence", "tampered", CrossLanguage("sha256")),),
+            digests={"evidence": ProjectionDigest("tampered", CrossLanguage("sha256"))},
         )
-    if stage == "residual":
+    if condition is Condition.RESIDUAL:
         return dataclasses.replace(certificate, residuals=("residual-c",))
-    raise ValueError(f"no break for stage {stage}")
-
+    raise ValueError(f"no break for condition {condition}")
 
 def reference_write_string(text):
     out = bytearray(b'"')

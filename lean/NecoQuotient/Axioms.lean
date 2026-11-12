@@ -67,20 +67,6 @@ namespace NecoQuotient
 #guard_msgs in #print axioms NecoQuotient.classBlocks_cover
 /-- info: 'NecoQuotient.refine_is_refinement' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms NecoQuotient.refine_is_refinement
-/-- info: 'NecoQuotient.admit_sound' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_sound
-/-- info: 'NecoQuotient.admit_ok_iff' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_ok_iff
-/-- info: 'NecoQuotient.admit_complete' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_complete
-/-- info: 'NecoQuotient.admit_decode_first' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_decode_first
-/-- info: 'NecoQuotient.admit_source_first' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_source_first
-/-- info: 'NecoQuotient.admit_residual_last' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_residual_last
-/-- info: 'NecoQuotient.admit_provenance' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_provenance
 
 /-- info: 'NecoQuotient.commute_map' depends on axioms: [Quot.sound] -/
 #guard_msgs in #print axioms NecoQuotient.commute_map
@@ -104,12 +90,6 @@ namespace NecoQuotient
 #guard_msgs in #print axioms NecoQuotient.observationFamilyRefines_determined_preserved
 /-- info: 'NecoQuotient.Bisimilar.obsEquiv' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms NecoQuotient.Bisimilar.obsEquiv
-/-- info: 'NecoQuotient.admit_coordinate_stage' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_coordinate_stage
-/-- info: 'NecoQuotient.admit_observations_stage' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_observations_stage
-/-- info: 'NecoQuotient.admit_digest_stage' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admit_digest_stage
 /-- info: 'NecoQuotient.RegionQuotient.block_equiv' depends on axioms: [propext] -/
 #guard_msgs in #print axioms NecoQuotient.RegionQuotient.block_equiv
 /-- info: 'NecoQuotient.RegionQuotient.block_subset_classBlock' depends on axioms: [propext] -/
@@ -130,21 +110,66 @@ namespace NecoQuotient
 /-- info: 'NecoQuotient.KeyBisimRule.bisimilar_of_checked' does not depend on any axioms -/
 #guard_msgs in #print axioms NecoQuotient.KeyBisimRule.bisimilar_of_checked
 
+
+
+/-- info: 'NecoQuotient.admit_sound' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admit_sound
+/-- info: 'NecoQuotient.admit_ok_iff' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admit_ok_iff
+/-- info: 'NecoQuotient.admit_complete' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admit_complete
+/-- info: 'NecoQuotient.admit_provenance' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admit_provenance
+/-- info: 'NecoQuotient.admitSelected_ok_iff' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_ok_iff
+/-- info: 'NecoQuotient.admitSelected_error_iff' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_error_iff
+/-- info: 'NecoQuotient.admitSelected_error_sound' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_error_sound
+/-- info: 'NecoQuotient.admitSelected_error_complete' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_error_complete
+/-- info: 'NecoQuotient.admitSelected_unchecked_decode' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_unchecked_decode
+/-- info: 'NecoQuotient.admitSelected_unchecked_source' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admitSelected_unchecked_source
+/-- info: 'NecoQuotient.statusAt_matched_iff' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.statusAt_matched_iff
+/-- info: 'NecoQuotient.statusAt_mismatched_iff' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.statusAt_mismatched_iff
+/-- info: 'NecoQuotient.statusAt_coordinate_independent' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.statusAt_coordinate_independent
+/-- info: 'NecoQuotient.statusAt_observations_independent' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.statusAt_observations_independent
+/-- info: 'NecoQuotient.statusAt_residual_independent' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.statusAt_residual_independent
+/-- info: 'NecoQuotient.checksOf_provenance' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.checksOf_provenance
+/-- info: 'NecoQuotient.DigestChecks.check_certificateOnly' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.check_certificateOnly
+/-- info: 'NecoQuotient.DigestChecks.check_recomputedOnly' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.check_recomputedOnly
+/-- info: 'NecoQuotient.DigestChecks.check_matched' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.check_matched
+/-- info: 'NecoQuotient.DigestChecks.check_different' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.check_different
+/-- info: 'NecoQuotient.DigestChecks.check_none' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.check_none
+/-- info: 'NecoQuotient.DigestChecks.allMatched_iff' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.DigestChecks.allMatched_iff
 /-- info: 'NecoQuotient.admitResolved_decode_first' depends on axioms: [propext] -/
 #guard_msgs in #print axioms NecoQuotient.admitResolved_decode_first
 /-- info: 'NecoQuotient.admitResolved_resolution' depends on axioms: [propext] -/
 #guard_msgs in #print axioms NecoQuotient.admitResolved_resolution
-/-- info: 'NecoQuotient.admitResolved_stale' depends on axioms: [propext] -/
+/-- info: 'NecoQuotient.admitResolved_stale' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms NecoQuotient.admitResolved_stale
 /-- info: 'NecoQuotient.admitResolved_source_eq' depends on axioms: [propext] -/
 #guard_msgs in #print axioms NecoQuotient.admitResolved_source_eq
-
-/-- info: 'NecoQuotient.admitWithRules_version' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admitWithRules_version
-/-- info: 'NecoQuotient.admitWithRules_unknown' depends on axioms: [propext] -/
-#guard_msgs in #print axioms NecoQuotient.admitWithRules_unknown
 /-- info: 'NecoQuotient.admitWithRules_eq' depends on axioms: [propext] -/
 #guard_msgs in #print axioms NecoQuotient.admitWithRules_eq
+/-- info: 'NecoQuotient.admitWithRules_ok_iff' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms NecoQuotient.admitWithRules_ok_iff
+/-- info: 'NecoQuotient.admitWithRules_unregistered' depends on axioms: [propext] -/
+#guard_msgs in #print axioms NecoQuotient.admitWithRules_unregistered
 /-- info: 'NecoQuotient.StatefulRule.summary_eq_of_checked' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms NecoQuotient.StatefulRule.summary_eq_of_checked
 

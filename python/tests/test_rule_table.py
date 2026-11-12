@@ -1,17 +1,18 @@
+import dataclasses
 import unittest
 
 from neco_quotient_certificate import (
     DuplicateRule,
+    Mismatch,
+    PrerequisiteFailed,
     RuleTable,
     admit,
 )
 
 from _support import REVISION, sample_certificate, sample_expected, sample_rule
 
-
 def other_rule(source, coordinate, observations, evidence):
-    return (sample_rule(source, coordinate, observations, evidence)[0],)
-
+    return sample_rule(source, coordinate, observations, evidence)
 
 class RuleTableTests(unittest.TestCase):
     def test_distinct_revisions_build_a_table_and_lookup_returns_the_rule(self):
@@ -50,8 +51,20 @@ class RuleTableTests(unittest.TestCase):
         reversed_table = RuleTable.of([("rule@2", other_rule), ("rule@1", sample_rule)])
         first = admit(forward, certificate, expected, "caller")
         second = admit(reversed_table, certificate, expected, "caller")
-        self.assertEqual(first.recomputed, second.recomputed)
+        self.assertEqual(dict(first.recomputed), dict(second.recomputed))
         self.assertEqual(first.certificate, second.certificate)
+
+    def test_unregistered_revision_does_not_invoke_any_rule(self):
+        calls = []
+        def recording_rule(source, coordinate, observations, evidence):
+            calls.append(source)
+            return sample_rule(source, coordinate, observations, evidence)
+        table = RuleTable.of([(REVISION, recording_rule)])
+        certificate = dataclasses.replace(sample_certificate(), rule_revision="rule@9")
+        result = admit(table, certificate, dataclasses.replace(sample_expected(), rule_revision="rule@9"), "caller")
+        self.assertIsInstance(result, Mismatch)
+        self.assertEqual(calls, [])
+        self.assertIsInstance(result.checks.decode, PrerequisiteFailed)
 
     def test_table_is_independent_of_the_list_it_was_built_from(self):
         entries = [("rule@1", sample_rule)]
@@ -61,8 +74,7 @@ class RuleTableTests(unittest.TestCase):
         self.assertIsNone(table.lookup("rule@2"))
         self.assertIs(table.lookup("rule@1"), sample_rule)
         result = admit(table, sample_certificate(), sample_expected(), "caller")
-        self.assertEqual(result.recomputed, sample_certificate().digests)
-
+        self.assertEqual(dict(result.recomputed), dict(sample_certificate().digests))
 
 if __name__ == "__main__":
     unittest.main()

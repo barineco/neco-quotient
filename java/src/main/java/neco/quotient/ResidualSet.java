@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-/** 残余の要素所属で同一性を決める集合。 */
 public final class ResidualSet<T> {
 
     private final List<T> values;
@@ -20,12 +19,10 @@ public final class ResidualSet<T> {
         this.values = List.copyOf(unique);
     }
 
-    /** 要素の所属で重複を除いた集合を作る。 */
     public static <T> ResidualSet<T> of(Collection<? extends T> values) {
         return new ResidualSet<>(values);
     }
 
-    /** 集合の要素を構築時の順で返す。 */
     public List<T> values() {
         return values;
     }

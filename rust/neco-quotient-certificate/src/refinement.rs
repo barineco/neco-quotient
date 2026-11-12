@@ -1,6 +1,5 @@
 use crate::certificate::ResidualSet;
 
-/// 精密化で確認した観測の前後関係とその証拠。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObservationRefines<D, DPrime, E> {
     pub before_observations: D,
@@ -8,7 +7,6 @@ pub struct ObservationRefines<D, DPrime, E> {
     pub evidence: E,
 }
 
-/// 結果を観測で評価した証拠。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedAt<S, B, I, C, D, V, E> {
     pub source: S,
@@ -20,7 +18,6 @@ pub struct EvaluatedAt<S, B, I, C, D, V, E> {
     pub evidence: E,
 }
 
-/// 精密化の一段階の結果。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RefinementOutcome<V, R, S> {
     Resolved(V),
@@ -45,7 +42,6 @@ impl<V, R, S> RefinementOutcome<V, R, S> {
     }
 }
 
-/// 精密化前後の参照、評価と結果状態。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedRefinement<S, B, I, C, D, DPrime, V, R, Stop, DR, EB, EA> {
     source: S,
@@ -61,7 +57,6 @@ pub struct VerifiedRefinement<S, B, I, C, D, DPrime, V, R, Stop, DR, EB, EA> {
     evaluated_after: EvaluatedAt<S, B, I, C, DPrime, V, EA>,
 }
 
-/// 検証済み構築子が返す参照不一致。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefinementEvidenceMismatch {
     ObservationRefines,
@@ -81,7 +76,6 @@ where
     DPrime: PartialEq,
     V: PartialEq,
 {
-    /// 観測と評価証拠の参照を照合して精密化結果を構成する。
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         source: S,
@@ -345,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn residual_can_become_resolved_under_a_refined_observations() {
+    fn residual_can_become_resolved_under_refined_observations() {
         let refinement = verified(
             "D",
             "D'",

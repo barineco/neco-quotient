@@ -108,3 +108,33 @@ fn non_ascii_keys_are_ordered_by_utf8_bytes() -> Result<(), EncodingFailure> {
     assert!(halfwidth < emoji);
     Ok(())
 }
+
+#[test]
+fn digest_name_insertion_order_does_not_change_canonical_bytes() -> Result<(), EncodingFailure> {
+    let entry = |fill: &str| {
+        JsonValue::Object(vec![
+            ("digest".into(), text(fill)),
+            (
+                "scope".into(),
+                JsonValue::Object(vec![("cross_language".into(), text("sha256"))]),
+            ),
+        ])
+    };
+    let forward = JsonValue::Object(vec![
+        ("\u{ff5e}".into(), entry("1")),
+        ("\u{1f600}".into(), entry("2")),
+        ("evidence".into(), entry("3")),
+    ]);
+    let reversed = JsonValue::Object(vec![
+        ("evidence".into(), entry("3")),
+        ("\u{1f600}".into(), entry("2")),
+        ("\u{ff5e}".into(), entry("1")),
+    ]);
+
+    let encoded = canonical_bytes(&forward)?;
+    assert_eq!(encoded, canonical_bytes(&reversed)?);
+    let fullwidth_tilde = position_of(&encoded, "\"\u{ff5e}\":");
+    let emoji = position_of(&encoded, "\"\u{1f600}\":");
+    assert!(fullwidth_tilde < emoji);
+    Ok(())
+}

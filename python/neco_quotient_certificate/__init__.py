@@ -1,4 +1,4 @@
-from .admission import admit
+from .admission import admit, check
 from .certificate import (
     Certificate,
     CrossLanguage,
@@ -10,24 +10,72 @@ from .certificate import (
     WithinRuntime,
 )
 from .checked import Checked
-from .failure import Mismatch, Origin, Stage
+from .checks import (
+    AdmissionChecks,
+    CheckMatched,
+    CheckMismatched,
+    CheckResult,
+    Condition,
+    DigestChecks,
+    Matched,
+    Mismatched,
+    PrerequisiteEstablished,
+    PrerequisiteFailed,
+    ProjectionCertificateOnly,
+    ProjectionDifferent,
+    ProjectionMatched,
+    ProjectionRecomputedOnly,
+    ProjectionResult,
+    Prerequisite,
+    SourceChecks,
+    Status,
+    UncheckedByDecode,
+    UncheckedBySource,
+)
+from .failure import ConditionFailure, Mismatch, Origin
+from .refinement import RefinementOutcome, Residual, Resolved, Stopped
 from .rule import DuplicateRule, Rule, RuleTable
 
 __all__ = [
+    "AdmissionChecks",
+    "CheckMatched",
+    "CheckMismatched",
+    "CheckResult",
     "Certificate",
     "Checked",
+    "Condition",
+    "ConditionFailure",
     "CrossLanguage",
+    "DigestChecks",
     "DigestScope",
     "DuplicateRule",
     "Expected",
+    "Matched",
     "Mismatch",
+    "Mismatched",
     "Origin",
+    "Prerequisite",
+    "PrerequisiteEstablished",
+    "PrerequisiteFailed",
+    "ProjectionCertificateOnly",
+    "ProjectionDifferent",
     "ProjectionDigest",
+    "ProjectionMatched",
+    "ProjectionRecomputedOnly",
+    "ProjectionResult",
+    "RefinementOutcome",
+    "Residual",
     "ResidualSet",
+    "Resolved",
     "Rule",
     "RuleTable",
+    "SourceChecks",
     "SourceRef",
-    "Stage",
+    "Status",
+    "Stopped",
+    "UncheckedByDecode",
+    "UncheckedBySource",
     "WithinRuntime",
     "admit",
+    "check",
 ]

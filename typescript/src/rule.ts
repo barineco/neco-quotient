@@ -1,5 +1,5 @@
 import type { SourceRef } from "./certificate.ts";
-import type { ProjectionDigest } from "./digest.ts";
+import type { ProjectionDigestsInput } from "./digest.ts";
 import type { Result } from "./result.ts";
 
 export type Rule<S, Rev, C, Obs, E> = (
@@ -7,7 +7,7 @@ export type Rule<S, Rev, C, Obs, E> = (
   coordinate: C,
   observations: Obs,
   evidence: E,
-) => readonly ProjectionDigest[];
+) => ProjectionDigestsInput;
 
 export type RuleEntry<S, Rev, C, Obs, E> = readonly [string, Rule<S, Rev, C, Obs, E>];
 

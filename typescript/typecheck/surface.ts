@@ -1,14 +1,25 @@
 import {
+  AdmissionChecks,
   Checked,
+  Mismatch,
+  NameMap,
   RuleTable,
   admit,
+  projectionDigests,
+  residual,
+  resolved,
+  stopped,
   type Certificate,
   type Comparison,
+  type Condition,
+  type ConditionFailure,
   type Expected,
-  type Mismatch,
   type ProjectionDigest,
+  type ProjectionDigests,
+  type RefinementOutcome,
   type Result,
   type Rule,
+  type Status,
   residualSet,
 } from "../src/index.ts";
 
@@ -21,7 +32,7 @@ type Exp = Expected<Identity, bigint, Coordinate, boolean, symbol>;
 type Table = RuleTable<Identity, bigint, Coordinate, boolean, Evidence>;
 
 const rule: Rule<Identity, bigint, Coordinate, boolean, Evidence> = () => {
-  const digests: ProjectionDigest[] = [];
+  const digests = new Map<string, ProjectionDigest>();
   return digests;
 };
 
@@ -52,7 +63,7 @@ const certificate: Cert = {
   ruleRevision: "rule@1",
   source: { identity: { id: 1 }, revision: 2n },
   coordinate: [0, 0],
-  digests: [],
+  digests: projectionDigests(new Map()),
   residuals: residualSet([Symbol("residual")]),
   observations: false,
   evidence: new Uint8Array(),
@@ -69,8 +80,23 @@ const expected: Exp = {
 const outcome: Result<Checked<Identity, bigint, Coordinate, boolean, symbol, Evidence>, Mismatch<{ caller: string }>> =
   admit(table, certificate, expected, { caller: "fixture" }, comparison);
 if (outcome.ok) {
-  const digests: readonly ProjectionDigest[] = outcome.value.recomputed;
-  void digests;
+  const digests: ProjectionDigests = outcome.value.recomputed;
+  const first: ProjectionDigest | undefined = digests.get("graph");
+  void first;
+} else {
+  const checks: AdmissionChecks<{ caller: string }> = outcome.error.checks;
+  const status: Status<{ caller: string }> = outcome.error.statusAt("digest");
+  const condition: Condition = "coordinate";
+  void checks;
+  void status;
+  void condition;
+  if (checks.decode.kind === "failed") {
+    const failure: ConditionFailure<"decode", { caller: string }> = checks.decode.failure;
+    void failure;
+    // @ts-expect-error
+    const wrongCondition: ConditionFailure<"source", { caller: string }> = checks.decode.failure;
+    void wrongCondition;
+  }
 }
 
 // @ts-expect-error
@@ -86,7 +112,39 @@ const factoryUse = Checked.create;
 void factoryUse;
 
 // @ts-expect-error
-if (outcome.ok) outcome.value.certificate.digests.push({ projection: "x", digest: "y", scope: { kind: "cross_language", encoding: "z" } });
+const forgedMismatch = new Mismatch(new Map());
+void forgedMismatch;
+
+// @ts-expect-error
+const forgedChecks = new AdmissionChecks({});
+void forgedChecks;
+
+// @ts-expect-error
+const forgedNameMap = new NameMap(new Map());
+void forgedNameMap;
+
+const digestMap = projectionDigests(new Map());
+
+// @ts-expect-error
+digestMap.set("graph", { digest: "y", scope: { kind: "cross_language", encoding: "z" } });
+
+// @ts-expect-error
+digestMap.delete("graph");
+
+// @ts-expect-error
+digestMap.clear();
+
+// @ts-expect-error
+const projectionName: string = digestMap.get("graph")?.projection;
+void projectionName;
+
+// @ts-expect-error
+const bareArray: Certificate<Identity, bigint, Coordinate, boolean, symbol, Evidence> = { ...certificate, digests: [] };
+void bareArray;
+
+// @ts-expect-error
+const unknownCondition: Condition = "stage";
+void unknownCondition;
 
 // @ts-expect-error
 const unknownScope: ProjectionDigest["scope"] = { kind: "other", encoding: "z" };
@@ -102,3 +160,18 @@ void wrongEquality;
 
 // @ts-expect-error
 void admit(table, certificate, expected, "caller");
+
+const determined: RefinementOutcome<Identity, symbol, string> = resolved({ id: 1 });
+const remaining: RefinementOutcome<Identity, symbol, string> = residual({ id: 1 }, [Symbol("residual")]);
+const halted: RefinementOutcome<Identity, symbol, string> = stopped({ id: 1 }, [], "budget");
+void determined;
+void remaining;
+void halted;
+
+// @ts-expect-error
+const stoppedWithoutCause: RefinementOutcome<Identity, symbol, string> = { kind: "stopped", value: { id: 1 }, residuals: residualSet([]) };
+void stoppedWithoutCause;
+
+// @ts-expect-error
+const wrongCause: RefinementOutcome<Identity, symbol, string> = stopped({ id: 1 }, [], 1);
+void wrongCause;

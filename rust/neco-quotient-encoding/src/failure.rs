@@ -1,43 +1,45 @@
-/// Failure returned by canonical encoding, canonical decoding, digesting and certificate conversion.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EncodingFailure {
-    /// Name of the operation that reports this failure.
     pub operation: &'static str,
-    /// Condition that this failure reports.
     pub condition: EncodingCondition,
-    /// Failures of the inner operations that produced this failure.
     pub contributing: Vec<EncodingFailure>,
 }
 
-/// Condition reported by an `EncodingFailure`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EncodingCondition {
-    /// A `Number` was found at `path`; canonical form forbids numbers.
-    /// The textual representation of numbers is the caller's convention.
-    NumberNotCanonical { path: String },
-    /// An object at `path` contains the key `key` more than once.
-    DuplicateKey { path: String, key: String },
-    /// The input bytes differ from the canonical re-encoding of the parsed value.
-    NotCanonical { expected: Vec<u8>, actual: Vec<u8> },
-    /// The input bytes are not valid JSON, or the JSON parser rejected them.
-    Parse { message: String },
-    /// A required field is absent from an object.
-    MissingField { field: &'static str },
-    /// An object contains a key that the wire format does not define.
-    UnknownField { field: String },
-    /// A field has a value of the wrong JSON type or shape.
-    /// `actual` is the kind of the observed value, such as `"number"`.
+    NumberNotCanonical {
+        path: String,
+    },
+    DuplicateKey {
+        path: String,
+        key: String,
+    },
+    NotCanonical {
+        expected: Vec<u8>,
+        actual: Vec<u8>,
+    },
+    Parse {
+        message: String,
+    },
+    MissingField {
+        field: &'static str,
+    },
+    UnknownField {
+        field: String,
+    },
     UnexpectedShape {
         field: &'static str,
         expected: &'static str,
         actual: String,
     },
-    /// The residuals are not in normal form; `expected` and `actual` are their canonical bytes.
-    ResidualsNotNormalized { expected: Vec<u8>, actual: Vec<u8> },
-    /// The digests are not in normal form; `expected` and `actual` are their canonical bytes.
-    DigestsNotNormalized { expected: Vec<u8>, actual: Vec<u8> },
-    /// The same projection appears more than once with a different digest or scope.
-    DuplicateProjection { projection: String },
+    ResidualsNotNormalized {
+        expected: Vec<u8>,
+        actual: Vec<u8>,
+    },
+    MessageTooLong {
+        length: usize,
+        maximum: u64,
+    },
 }
 
 impl EncodingFailure {
@@ -57,7 +59,6 @@ impl EncodingFailure {
         }
     }
 
-    /// Returns the snake_case name of the condition that this failure reports.
     pub fn condition_name(&self) -> &'static str {
         match &self.condition {
             EncodingCondition::NumberNotCanonical { .. } => "number_not_canonical",
@@ -68,8 +69,7 @@ impl EncodingFailure {
             EncodingCondition::UnknownField { .. } => "unknown_field",
             EncodingCondition::UnexpectedShape { .. } => "unexpected_shape",
             EncodingCondition::ResidualsNotNormalized { .. } => "residuals_not_normalized",
-            EncodingCondition::DigestsNotNormalized { .. } => "digests_not_normalized",
-            EncodingCondition::DuplicateProjection { .. } => "duplicate_projection",
+            EncodingCondition::MessageTooLong { .. } => "message_too_long",
         }
     }
 }
@@ -111,18 +111,10 @@ impl std::fmt::Display for EncodingFailure {
                 expected.len(),
                 actual.len()
             ),
-            EncodingCondition::DigestsNotNormalized { expected, actual } => write!(
+            EncodingCondition::MessageTooLong { length, maximum } => write!(
                 formatter,
-                "digests are not in normal form (expected {} bytes, actual {} bytes)",
-                expected.len(),
-                actual.len()
+                "SHA-256 message of {length} bytes exceeds {maximum} bytes"
             ),
-            EncodingCondition::DuplicateProjection { projection } => {
-                write!(
-                    formatter,
-                    "projection {projection:?} has a conflicting digest or scope"
-                )
-            }
         }
     }
 }

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neco-quotient-certificate"
-version = "0.1.0"
+version = "0.2.0"
 description = "観測による同一視の証明書を期待値と照合する"
 readme = "README.md"
 requires-python = ">=3.14"

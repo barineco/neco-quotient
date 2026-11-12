@@ -2,7 +2,7 @@
 
 証明書を期待値と照合する Gleam の package です。
 
-照合の条件は [証明書](../docs/certificate.md) で定めます。
+照合の条件は [docs/certificate.md](../docs/certificate.md) に記載されています。
 
 ## 導入
 
@@ -26,14 +26,16 @@ neco_quotient_certificate = { path = "../neco-quotient/gleam" }
 `RuleTable` を作り、証明書を期待値と照合する例:
 
 ```gleam
+import gleam/dict
 import gleam/int
 import gleam/io
-import gleam/list
 import neco_quotient_certificate/admission
-import neco_quotient_certificate/certificate.{Certificate, Expected, residual_set}
+import neco_quotient_certificate/certificate.{
+  Certificate, Expected, residual_set,
+}
+import neco_quotient_certificate/digest.{CrossLanguage, ProjectionDigest}
 import neco_quotient_certificate/failure
 import neco_quotient_certificate/rule_table
-import neco_quotient_certificate/digest.{CrossLanguage, ProjectionDigest}
 import neco_quotient_certificate/source.{type SourceRef, SourceRef}
 
 fn demo_rule(
@@ -48,7 +50,9 @@ fn demo_rule(
     <> int.to_string(src.revision)
     <> ":"
     <> int.to_string(coordinate + observations + evidence)
-  [ProjectionDigest(projection: "graph", digest: text, scope: CrossLanguage("demo@1"))]
+  dict.from_list([
+    #("graph", ProjectionDigest(digest: text, scope: CrossLanguage("demo@1"))),
+  ])
 }
 
 pub fn main() {
@@ -83,7 +87,7 @@ pub fn main() {
     )
   {
     Ok(checked) ->
-      io.println(int.to_string(list.length(admission.recomputed(checked))))
+      io.println(int.to_string(dict.size(admission.recomputed(checked))))
     Error(mismatch) -> io.println(failure.describe(mismatch))
   }
 }
@@ -95,7 +99,7 @@ pub fn main() {
 
 照合の関数 `admission.admit` の最後の二つの引数には、入力の識別子とリビジョンをそれぞれ文字列にする関数を渡します。
 
-結果は `Result` で表され、成功の値 `Checked` を作れるのは照合の関数だけです。型の言語間の対応は [言語間の型対応](../docs/reference/type-correspondence.md) にあります。
+結果は `Result` で表され、成功の値 `Checked` を作れるのは照合の関数だけです。型の言語間の対応は [docs/type-correspondence.md](../docs/type-correspondence.md) にあります。
 
 ## 検査
 

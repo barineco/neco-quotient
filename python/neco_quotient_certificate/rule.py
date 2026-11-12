@@ -1,14 +1,10 @@
+from collections.abc import Mapping
 from dataclasses import InitVar, dataclass, field
 from typing import Iterable, Protocol
 
 from .certificate import ProjectionDigest, SourceRef
 
-
 class Rule[S, Rev, C, Obs, E](Protocol):
-    """座標、観測、証拠から入力の射影ダイジェストを再計算する規則。
-
-    返す射影ダイジェストは射影の昇順に並べる。
-    """
 
     def __call__(
         self,
@@ -16,25 +12,17 @@ class Rule[S, Rev, C, Obs, E](Protocol):
         coordinate: C,
         observations: Obs,
         evidence: E,
-    ) -> tuple[ProjectionDigest, ...]: ...
-
+    ) -> Mapping[str, ProjectionDigest]: ...
 
 @dataclass(frozen=True)
 class DuplicateRule:
-    """表の中で二度以上現れる規則のリビジョン。"""
 
     rule_revision: str
 
-
 _TABLE_SEAL = object()
-
 
 @dataclass(frozen=True, eq=False)
 class RuleTable[S, Rev, C, Obs, E]:
-    """規則のリビジョンをキーとする規則の表。
-
-    構築時にリビジョンと規則の組を tuple として固定する。RuleTable.of から構築する。
-    """
 
     _entries: tuple[tuple[str, Rule[S, Rev, C, Obs, E]], ...] = field(repr=False)
     _seal: InitVar[object | None] = None

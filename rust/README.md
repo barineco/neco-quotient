@@ -7,7 +7,7 @@ neco-quotient の Rust 実装です。
 | 目的 | crate |
 |---|---|
 | 証明書を照合する | [neco-quotient-certificate](neco-quotient-certificate) |
-| 実体化解除を判定する | [neco-quotient-retention](neco-quotient-retention) |
+| データの保持の要否を判定する | [neco-quotient-retention](neco-quotient-retention) |
 | 証明書を JSON へ符号化する | [neco-quotient-encoding](neco-quotient-encoding) |
 
 各 crate は単独で利用できます。
@@ -27,4 +27,4 @@ cargo test --workspace
 
 ## 概念と契約
 
-証明書の欄、照合の段階、保持判定の入力と結果は [docs/](../docs) が定義します。
+証明書の欄、照合の条件、保持判定の入力と結果は [docs/](../docs) に記載されています。

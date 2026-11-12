@@ -1,17 +1,17 @@
+use std::collections::BTreeMap;
+
 use neco_json::JsonValue;
 
 use crate::canonical::{canonical_bytes, normalize_value};
 use crate::digest::sha256_hex;
 use crate::failure::{EncodingCondition, EncodingFailure};
 
-/// Key names used by the certificate wire format.
 pub const RULE_REVISION: &str = "rule_revision";
 pub const SOURCE: &str = "source";
 pub const IDENTITY: &str = "identity";
 pub const REVISION: &str = "revision";
 pub const COORDINATE: &str = "coordinate";
 pub const DIGESTS: &str = "digests";
-pub const PROJECTION: &str = "projection";
 pub const DIGEST: &str = "digest";
 pub const SCOPE: &str = "scope";
 pub const WITHIN_RUNTIME: &str = "within_runtime";
@@ -23,48 +23,38 @@ pub const EVIDENCE: &str = "evidence";
 const FROM_VALUE: &str = "from_value";
 const TO_VALUE: &str = "to_value";
 
-/// Scope in which a projection digest is meaningful.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DigestScope {
-    /// The digest is comparable only within the named runtime.
     WithinRuntime(String),
-    /// The digest is comparable across languages under the named scheme.
     CrossLanguage(String),
 }
 
-/// A digest of one projection together with its scope.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionDigestWire {
-    pub projection: String,
     pub digest: String,
     pub scope: DigestScope,
 }
 
-/// Identity and revision of the source a certificate refers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceRefWire {
     pub identity: String,
     pub revision: String,
 }
 
-/// Wire form of a quotient certificate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CertificateWire {
     pub rule_revision: String,
     pub source: SourceRefWire,
     pub coordinate: JsonValue,
-    pub digests: Vec<ProjectionDigestWire>,
+    pub digests: BTreeMap<String, ProjectionDigestWire>,
     pub residuals: Vec<JsonValue>,
     pub observations: JsonValue,
     pub evidence: JsonValue,
 }
 
 impl CertificateWire {
-    /// Converts the certificate into a JSON value with the wire key names.
-    /// The residuals and the digests must already be in normal form.
     pub fn to_value(&self) -> Result<JsonValue, EncodingFailure> {
         require_normalized_residuals(&self.residuals, TO_VALUE)?;
-        require_normalized_digests(&self.digests, TO_VALUE)?;
         Ok(JsonValue::Object(vec![
             (
                 RULE_REVISION.into(),
@@ -79,9 +69,6 @@ impl CertificateWire {
         ]))
     }
 
-    /// Reads a certificate from a JSON value. Rejects unknown and duplicate keys,
-    /// missing or mistyped fields, values that have no canonical bytes,
-    /// and residuals or digests that are not in normal form.
     pub fn from_value(value: &JsonValue) -> Result<Self, EncodingFailure> {
         ensure_keys(
             value,
@@ -96,22 +83,15 @@ impl CertificateWire {
                 EVIDENCE,
             ],
         )?;
-        let digests = array_field(value, DIGESTS)?
-            .iter()
-            .map(digest_from_value)
-            .collect::<Result<Vec<_>, _>>()?;
+        let digests = digests_from_value(field(value, DIGESTS)?)?;
         let residuals = array_field(value, RESIDUALS)?.to_vec();
         require_normalized_residuals(&residuals, FROM_VALUE)?;
-        require_normalized_digests(&digests, FROM_VALUE)?;
         let coordinate = field(value, COORDINATE)?.clone();
         let observations = field(value, OBSERVATIONS)?.clone();
         let evidence = field(value, EVIDENCE)?.clone();
         require_canonical(&coordinate, FROM_VALUE)?;
         require_canonical(&observations, FROM_VALUE)?;
         require_canonical(&evidence, FROM_VALUE)?;
-        for residual in &residuals {
-            require_canonical(residual, FROM_VALUE)?;
-        }
         Ok(Self {
             rule_revision: string_field(value, RULE_REVISION)?,
             source: source_from_value(field(value, SOURCE)?)?,
@@ -123,7 +103,6 @@ impl CertificateWire {
         })
     }
 
-    /// Returns the canonical bytes of the wire form.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, EncodingFailure> {
         let value = self
             .to_value()
@@ -131,16 +110,13 @@ impl CertificateWire {
         canonical_bytes(&value).map_err(|failure| EncodingFailure::wrap("canonical_bytes", failure))
     }
 
-    /// Returns the lowercase hexadecimal SHA-256 digest of the canonical bytes.
     pub fn digest(&self) -> Result<String, EncodingFailure> {
         self.canonical_bytes()
-            .map(|bytes| sha256_hex(&bytes))
+            .and_then(|bytes| sha256_hex(&bytes))
             .map_err(|failure| EncodingFailure::wrap("digest", failure))
     }
 }
 
-/// Sorts residuals by their canonical bytes and removes entries with identical bytes.
-/// Each returned element is in normalized form, so the result does not depend on input order.
 pub fn normalize_residuals(residuals: Vec<JsonValue>) -> Result<Vec<JsonValue>, EncodingFailure> {
     let mut keyed = residuals
         .iter()
@@ -155,34 +131,6 @@ pub fn normalize_residuals(residuals: Vec<JsonValue>) -> Result<Vec<JsonValue>, 
     keyed.sort_by(|left, right| left.0.cmp(&right.0));
     keyed.dedup_by(|current, kept| current.0 == kept.0);
     Ok(keyed.into_iter().map(|(_, value)| value).collect())
-}
-
-/// Sorts digests by the bytes of their projection and removes exact duplicates.
-/// The normal form lists each projection once, in ascending byte order.
-/// A projection that appears with a different digest or scope is rejected.
-pub fn normalize_digests(
-    digests: Vec<ProjectionDigestWire>,
-) -> Result<Vec<ProjectionDigestWire>, EncodingFailure> {
-    let mut sorted = digests;
-    sorted.sort_by(|left, right| left.projection.as_bytes().cmp(right.projection.as_bytes()));
-    let mut normalized: Vec<ProjectionDigestWire> = Vec::with_capacity(sorted.len());
-    for digest in sorted {
-        if let Some(kept) = normalized.last() {
-            if kept.projection == digest.projection {
-                if *kept != digest {
-                    return Err(EncodingFailure::new(
-                        "normalize_digests",
-                        EncodingCondition::DuplicateProjection {
-                            projection: digest.projection,
-                        },
-                    ));
-                }
-                continue;
-            }
-        }
-        normalized.push(digest);
-    }
-    Ok(normalized)
 }
 
 fn require_normalized_residuals(
@@ -201,25 +149,6 @@ fn require_normalized_residuals(
     Err(EncodingFailure::new(
         operation,
         EncodingCondition::ResidualsNotNormalized { expected, actual },
-    ))
-}
-
-fn require_normalized_digests(
-    digests: &[ProjectionDigestWire],
-    operation: &'static str,
-) -> Result<(), EncodingFailure> {
-    let normalized = normalize_digests(digests.to_vec())
-        .map_err(|failure| EncodingFailure::wrap(operation, failure))?;
-    if normalized.as_slice() == digests {
-        return Ok(());
-    }
-    let expected = canonical_bytes(&digests_to_value(&normalized))
-        .map_err(|failure| EncodingFailure::wrap(operation, failure))?;
-    let actual = canonical_bytes(&digests_to_value(digests))
-        .map_err(|failure| EncodingFailure::wrap(operation, failure))?;
-    Err(EncodingFailure::new(
-        operation,
-        EncodingCondition::DigestsNotNormalized { expected, actual },
     ))
 }
 
@@ -244,8 +173,13 @@ fn source_from_value(value: &JsonValue) -> Result<SourceRefWire, EncodingFailure
     })
 }
 
-fn digests_to_value(digests: &[ProjectionDigestWire]) -> JsonValue {
-    JsonValue::Array(digests.iter().map(digest_to_value).collect())
+fn digests_to_value(digests: &BTreeMap<String, ProjectionDigestWire>) -> JsonValue {
+    JsonValue::Object(
+        digests
+            .iter()
+            .map(|(name, digest)| (name.clone(), digest_to_value(digest)))
+            .collect(),
+    )
 }
 
 fn digest_to_value(digest: &ProjectionDigestWire) -> JsonValue {
@@ -260,19 +194,27 @@ fn digest_to_value(digest: &ProjectionDigestWire) -> JsonValue {
         )]),
     };
     JsonValue::Object(vec![
-        (
-            PROJECTION.into(),
-            JsonValue::String(digest.projection.clone()),
-        ),
         (DIGEST.into(), JsonValue::String(digest.digest.clone())),
         (SCOPE.into(), scope),
     ])
 }
 
+fn digests_from_value(
+    value: &JsonValue,
+) -> Result<BTreeMap<String, ProjectionDigestWire>, EncodingFailure> {
+    let fields = value
+        .as_object()
+        .ok_or_else(|| shape_failure(value, DIGESTS, "object"))?;
+    reject_duplicate_keys(fields, DIGESTS)?;
+    fields
+        .iter()
+        .map(|(name, digest)| Ok((name.clone(), digest_from_value(digest)?)))
+        .collect()
+}
+
 fn digest_from_value(value: &JsonValue) -> Result<ProjectionDigestWire, EncodingFailure> {
-    ensure_keys(value, DIGESTS, &[PROJECTION, DIGEST, SCOPE])?;
+    ensure_keys(value, DIGEST, &[DIGEST, SCOPE])?;
     Ok(ProjectionDigestWire {
-        projection: string_field(value, PROJECTION)?,
         digest: string_field(value, DIGEST)?,
         scope: scope_from_value(field(value, SCOPE)?)?,
     })
@@ -324,6 +266,24 @@ fn shape_failure(
     )
 }
 
+fn reject_duplicate_keys(
+    fields: &[(String, JsonValue)],
+    path: &'static str,
+) -> Result<(), EncodingFailure> {
+    for (index, (key, _)) in fields.iter().enumerate() {
+        if fields[..index].iter().any(|(earlier, _)| earlier == key) {
+            return Err(EncodingFailure::new(
+                FROM_VALUE,
+                EncodingCondition::DuplicateKey {
+                    path: path.to_string(),
+                    key: key.clone(),
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn ensure_keys(
     value: &JsonValue,
     name: &'static str,
@@ -332,24 +292,19 @@ fn ensure_keys(
     let fields = value
         .as_object()
         .ok_or_else(|| shape_failure(value, name, "object"))?;
-    for (index, (key, _)) in fields.iter().enumerate() {
-        if fields[..index].iter().any(|(earlier, _)| earlier == key) {
-            return Err(EncodingFailure::new(
-                FROM_VALUE,
-                EncodingCondition::DuplicateKey {
-                    path: name.to_string(),
-                    key: key.clone(),
-                },
-            ));
-        }
-        if !known.contains(&key.as_str()) {
-            return Err(EncodingFailure::new(
-                FROM_VALUE,
-                EncodingCondition::UnknownField { field: key.clone() },
-            ));
-        }
+    let unknown = fields
+        .iter()
+        .position(|(key, _)| !known.contains(&key.as_str()));
+    reject_duplicate_keys(&fields[..unknown.unwrap_or(fields.len())], name)?;
+    match unknown {
+        Some(index) => Err(EncodingFailure::new(
+            FROM_VALUE,
+            EncodingCondition::UnknownField {
+                field: fields[index].0.clone(),
+            },
+        )),
+        None => Ok(()),
     }
-    Ok(())
 }
 
 fn field<'a>(object: &'a JsonValue, name: &'static str) -> Result<&'a JsonValue, EncodingFailure> {
@@ -384,9 +339,8 @@ mod tests {
         JsonValue::String(value.into())
     }
 
-    fn digest(projection: &str, fill: char) -> ProjectionDigestWire {
+    fn digest(fill: char) -> ProjectionDigestWire {
         ProjectionDigestWire {
-            projection: projection.into(),
             digest: fill.to_string().repeat(64),
             scope: DigestScope::WithinRuntime("rust".into()),
         }
@@ -432,62 +386,53 @@ mod tests {
     }
 
     #[test]
-    fn normalize_digests_is_idempotent() -> Result<(), EncodingFailure> {
-        let input = vec![digest("p2", 'b'), digest("p1", 'a'), digest("p2", 'b')];
-        let once = normalize_digests(input)?;
-        let twice = normalize_digests(once.clone())?;
-        assert_eq!(once, twice);
-        assert_eq!(once.len(), 2);
+    fn digest_map_insertion_order_does_not_change_wire_bytes() -> Result<(), EncodingFailure> {
+        let mut one = BTreeMap::new();
+        one.insert("p1".to_string(), digest('a'));
+        one.insert("p2".to_string(), digest('b'));
+        one.insert("p3".to_string(), digest('c'));
+        let mut two = BTreeMap::new();
+        two.insert("p3".to_string(), digest('c'));
+        two.insert("p1".to_string(), digest('a'));
+        two.insert("p2".to_string(), digest('b'));
+
+        let mut first = certificate_with(one);
+        let second = certificate_with(two);
+        assert_eq!(first.canonical_bytes()?, second.canonical_bytes()?);
+        assert_eq!(first.digest()?, second.digest()?);
+
+        first.digests.insert("p2".to_string(), digest('d'));
+        assert_ne!(first.canonical_bytes()?, second.canonical_bytes()?);
         Ok(())
     }
 
     #[test]
-    fn normalize_digests_is_order_independent() -> Result<(), EncodingFailure> {
-        let one = normalize_digests(vec![
-            digest("p1", 'a'),
-            digest("p3", 'c'),
-            digest("p2", 'b'),
-        ])?;
-        let two = normalize_digests(vec![
-            digest("p2", 'b'),
-            digest("p3", 'c'),
-            digest("p1", 'a'),
-        ])?;
-        assert_eq!(one, two);
-        Ok(())
-    }
-
-    #[test]
-    fn conflicting_digest_for_same_projection_is_rejected() -> Result<(), EncodingFailure> {
-        let result = normalize_digests(vec![digest("p1", 'a'), digest("p1", 'b')]);
-        assert!(matches!(
-            result,
-            Err(EncodingFailure {
-                operation: "normalize_digests",
-                condition: EncodingCondition::DuplicateProjection { ref projection },
-                ..
-            }) if projection == "p1"
-        ));
-        Ok(())
-    }
-
-    #[test]
-    fn scope_only_difference_for_same_projection_is_rejected() -> Result<(), EncodingFailure> {
-        let within = digest("p1", 'a');
+    fn scope_difference_for_same_name_changes_wire_bytes() -> Result<(), EncodingFailure> {
+        let within = digest('a');
         let cross = ProjectionDigestWire {
-            projection: "p1".into(),
             digest: "a".repeat(64),
             scope: DigestScope::CrossLanguage("scheme-1".into()),
         };
-        let result = normalize_digests(vec![within, cross]);
-        assert!(matches!(
-            result,
-            Err(EncodingFailure {
-                operation: "normalize_digests",
-                condition: EncodingCondition::DuplicateProjection { ref projection },
-                ..
-            }) if projection == "p1"
-        ));
+        let mut one = certificate_with(BTreeMap::new());
+        one.digests.insert("p1".into(), within);
+        let mut two = certificate_with(BTreeMap::new());
+        two.digests.insert("p1".into(), cross);
+        assert_ne!(one.canonical_bytes()?, two.canonical_bytes()?);
         Ok(())
+    }
+
+    fn certificate_with(digests: BTreeMap<String, ProjectionDigestWire>) -> CertificateWire {
+        CertificateWire {
+            rule_revision: "r".into(),
+            source: SourceRefWire {
+                identity: "s".into(),
+                revision: "v".into(),
+            },
+            coordinate: JsonValue::Null,
+            digests,
+            residuals: vec![],
+            observations: JsonValue::Null,
+            evidence: JsonValue::Null,
+        }
     }
 }

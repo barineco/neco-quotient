@@ -1,4 +1,5 @@
 import gleam/bit_array
+import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import json_string
@@ -6,8 +7,8 @@ import neco_quotient_certificate/certificate.{
   type Certificate, type Expected, Certificate, Expected, residual_set,
 }
 import neco_quotient_certificate/digest.{
-  type DigestScope, type ProjectionDigest, CrossLanguage, ProjectionDigest,
-  WithinRuntime,
+  type DigestScope, type ProjectionDigest, type ProjectionDigests, CrossLanguage,
+  ProjectionDigest, WithinRuntime,
 }
 import neco_quotient_certificate/rule_table.{type RuleTable}
 import neco_quotient_certificate/source.{type SourceRef, SourceRef}
@@ -62,16 +63,19 @@ pub fn comparison_rule(
   _coordinate: String,
   _observations: String,
   evidence: String,
-) -> List(ProjectionDigest) {
+) -> ProjectionDigests {
   [
-    ProjectionDigest(
-      projection: "evidence",
-      digest: sha256_hex(
-        bit_array.from_string(json_string.string_literal(evidence)),
+    #(
+      "evidence",
+      ProjectionDigest(
+        digest: sha256_hex(
+          bit_array.from_string(json_string.string_literal(evidence)),
+        ),
+        scope: CrossLanguage("sha256"),
       ),
-      scope: CrossLanguage("sha256"),
     ),
   ]
+  |> dict.from_list
 }
 
 fn row_decoder() -> decode.Decoder(Row) {
@@ -86,7 +90,10 @@ fn certificate_decoder() -> decode.Decoder(Cert) {
   use rule_revision <- decode.field("rule_revision", decode.string)
   use source <- decode.field("source", source_decoder())
   use coordinate <- decode.field("coordinate", decode.string)
-  use digests <- decode.field("digests", decode.list(digest_decoder()))
+  use digests <- decode.field(
+    "digests",
+    decode.dict(decode.string, digest_decoder()),
+  )
   use residuals <- decode.field("residuals", decode.list(decode.string))
   use observations <- decode.field("observations", decode.string)
   use evidence <- decode.field("evidence", decode.string)
@@ -123,10 +130,9 @@ fn source_decoder() -> decode.Decoder(SourceRef(String, String)) {
 }
 
 fn digest_decoder() -> decode.Decoder(ProjectionDigest) {
-  use projection <- decode.field("projection", decode.string)
   use digest <- decode.field("digest", decode.string)
   use scope <- decode.field("scope", scope_decoder())
-  decode.success(ProjectionDigest(projection:, digest:, scope:))
+  decode.success(ProjectionDigest(digest:, scope:))
 }
 
 fn scope_decoder() -> decode.Decoder(DigestScope) {

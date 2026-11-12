@@ -12,8 +12,8 @@
 
 ## リファレンス
 
-- [用語索引](reference/terminology.md): 概念と公開識別子の定義元
-- [言語間の型対応](reference/type-correspondence.md): 型引数、欄名、照合の段階、比較範囲
+- [用語索引](terminology.md): 概念と公開識別子の定義元
+- [言語間の型対応](type-correspondence.md): 型引数、欄名、照合の条件、比較範囲
 
 ## 実装
 

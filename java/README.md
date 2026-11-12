@@ -2,7 +2,7 @@
 
 証明書を期待値と照合する Java の実装です。
 
-照合の条件は [証明書](../docs/certificate.md) で定めます。
+照合の条件は [docs/certificate.md](../docs/certificate.md) に記載されています。
 
 ## 導入
 
@@ -23,6 +23,7 @@ jar --create --file build/neco-quotient.jar -C build/classes .
 
 ```java
 import java.util.List;
+import java.util.Map;
 
 import neco.quotient.Certificate;
 import neco.quotient.Checked;
@@ -41,9 +42,8 @@ import neco.quotient.SourceRef;
 public final class Example {
     public static void main(String[] args) {
         Rule<String, String, String, String, String> rule =
-                (source, coordinate, observations, evidence) -> List.of(
-                        new ProjectionDigest("evidence", "digest-of-" + evidence,
-                                new DigestScope.CrossLanguage("example")));
+                (source, coordinate, observations, evidence) -> Map.of("evidence",
+                        new ProjectionDigest("digest-of-" + evidence, new DigestScope.CrossLanguage("example")));
         Result<RuleTable<String, String, String, String, String>, DuplicateRule> built =
                 RuleTable.of(List.of(new RuleEntry<>("example@1", rule)));
         if (!(built instanceof Result.Accepted<RuleTable<String, String, String, String, String>, DuplicateRule>(var table))) {
@@ -55,7 +55,7 @@ public final class Example {
                 "example@1",
                 source,
                 "coord-a",
-                List.of(new ProjectionDigest("evidence", "digest-of-x", new DigestScope.CrossLanguage("example"))),
+                Map.of("evidence", new ProjectionDigest("digest-of-x", new DigestScope.CrossLanguage("example"))),
                 ResidualSet.of(List.of("residual-a")),
                 "observations-a",
                 "x");
@@ -81,7 +81,7 @@ java -cp neco-quotient.jar:. Example
 実行結果:
 
 ```text
-accepted: [ProjectionDigest[projection=evidence, digest=digest-of-x, scope=CrossLanguage[payload=example]]]
+accepted: {evidence=ProjectionDigest[digest=digest-of-x, scope=CrossLanguage[payload=example]]}
 ```
 
 ## Java での表し方
@@ -91,7 +91,7 @@ accepted: [ProjectionDigest[projection=evidence, digest=digest-of-x, scope=Cross
 - 成功: `Result.Accepted`
 - 失敗: `Result.Rejected`
 
-照合を通過した値 `Checked` を作れるのは `Checked.admit` だけです。型の言語間の対応は [言語間の型対応](../docs/reference/type-correspondence.md) にあります。
+照合を通過した値 `Checked` を作れるのは `Checked.admit` だけです。型の言語間の対応は [docs/type-correspondence.md](../docs/type-correspondence.md) にあります。
 
 ## 検査
 

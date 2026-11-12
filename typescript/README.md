@@ -2,7 +2,7 @@
 
 証明書を期待値と照合する TypeScript の実装です。
 
-照合の条件は [証明書](../docs/certificate.md) で定めます。
+照合の条件は [docs/certificate.md](../docs/certificate.md) に記載されています。
 
 ## 導入
 
@@ -26,15 +26,14 @@ npm install ../neco-quotient/typescript
 `RuleTable` を作り、証明書を期待値と照合する例:
 
 ```ts
-import { RuleTable, admit, residualSet, type Comparison, type Rule } from "neco-quotient-certificate";
+import { RuleTable, admit, projectionDigests, residualSet, type Comparison, type Rule } from "neco-quotient-certificate";
 
-const rule: Rule<string, string, string, string, string> = (source, coordinate, observations, evidence) => [
-  {
-    projection: "evidence",
+const rule: Rule<string, string, string, string, string> = (source, coordinate, observations, evidence) => ({
+  evidence: {
     digest: evidence,
     scope: { kind: "cross_language", encoding: "identity" },
   },
-];
+});
 
 const table = RuleTable.create([["rule@1", rule]]);
 if (!table.ok) throw new Error(`duplicate rule ${table.error.ruleRevision}`);
@@ -55,7 +54,7 @@ const result = admit(
     ruleRevision: "rule@1",
     source: { identity: "source-alpha", revision: "rev-1" },
     coordinate: "coord-a",
-    digests: [{ projection: "evidence", digest: "d", scope: { kind: "cross_language", encoding: "identity" } }],
+    digests: projectionDigests({ evidence: { digest: "d", scope: { kind: "cross_language", encoding: "identity" } } }),
     residuals: residualSet(["residual-a"]),
     observations: "observations-a",
     evidence: "d",
@@ -72,20 +71,20 @@ const result = admit(
 );
 
 if (result.ok) {
-  console.log(result.value.recomputed);
+  console.log(result.value.recomputed.entries());
 }
 ```
 
 結果は `ok` で区別されます。
 
 - 成功: `value` に照合を通過した `Checked` が入る
-- 失敗: `error` に最初の不一致を表す `Mismatch` が入る
+- 失敗: `error` に不成立の条件と未照合の条件を全て持つ `Mismatch` が入る
 
 ## TypeScript での表し方
 
 照合の関数には、各フィールドの等しさを判定する関数の組 `Comparison` を渡します。文字列のフィールドであれば、`===` で比べる関数で足ります。
 
-`Checked` の構築子は非公開で、成功の値を作れるのは `admit` だけです。型の言語間の対応は [言語間の型対応](../docs/reference/type-correspondence.md) にあります。
+`Checked` の構築子は非公開で、成功の値を作れるのは `admit` だけです。型の言語間の対応は [docs/type-correspondence.md](../docs/type-correspondence.md) にあります。
 
 ## 検査
 

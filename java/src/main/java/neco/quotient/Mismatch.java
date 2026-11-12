@@ -1,44 +1,70 @@
 package neco.quotient;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 照合の失敗。
- *
- * <p>同一性は操作、段階、入力参照で比べる。期待値と実際の値は診断の表示に限る。
- *
- * @param operation 操作の名前
- * @param stage 不一致の段階
- * @param expected 期待値の診断の表示
- * @param actual 実際の値の診断の表示
- * @param origin 証明書のリビジョンと入力参照
- * @param provenance 呼出し元が渡した来歴
- * @param contributing 寄与した不一致の列
- * @param <P> 来歴の型
- */
-public record Mismatch<P>(
-        String operation,
-        Stage stage,
-        String expected,
-        String actual,
-        Origin origin,
-        P provenance,
-        List<Mismatch<P>> contributing) {
+public final class Mismatch<P> {
 
-    public Mismatch {
-        contributing = List.copyOf(contributing);
+    private final AdmissionChecks<P> checks;
+
+    private Mismatch(AdmissionChecks<P> checks) {
+        this.checks = checks;
     }
 
-    /**
-     * 不一致の診断の文を返す。
-     *
-     * @return 操作、段階、リビジョンと入力を含む文
-     */
+    static <P> Mismatch<P> of(AdmissionChecks<P> checks) {
+        if (checks.allMatched()) {
+            throw new IllegalArgumentException("a mismatch needs at least one failed condition");
+        }
+        return new Mismatch<>(checks);
+    }
+
+    public AdmissionChecks<P> checks() {
+        return checks;
+    }
+
+    public Origin origin() {
+        return checks.origin();
+    }
+
+    public P provenance() {
+        return checks.provenance();
+    }
+
+    public Status<P> statusAt(Condition condition) {
+        return checks.statusAt(condition);
+    }
+
     public String describe() {
-        return operation + " failed at stage " + stage.label()
-                + ": expected " + expected
-                + ", actual " + actual
-                + " (rule " + origin.ruleRevision()
-                + ", source " + origin.sourceIdentity() + "@" + origin.sourceRevision() + ")";
+        List<String> parts = new ArrayList<>();
+        if (checks.decode() instanceof Prerequisite.Failed<ConditionFailure<P>, DigestChecks>(var failure)) {
+            parts.add(detail("decode", failure));
+        } else if (checks.decode() instanceof Prerequisite.Established<ConditionFailure<P>, DigestChecks>(var digests)) {
+            digests.results().forEach((name, result) -> {
+                if (!result.isMatched()) {
+                    parts.add("digest " + name + " " + result.label());
+                }
+            });
+        }
+        if (checks.source() instanceof Prerequisite.Failed<ConditionFailure<P>, SourceChecks<P>>(var failure)) {
+            parts.add(detail("source", failure));
+        } else if (checks.source() instanceof Prerequisite.Established<ConditionFailure<P>, SourceChecks<P>>(var children)) {
+            addCheck(parts, "coordinate", children.coordinate());
+            addCheck(parts, "observations", children.observations());
+            addCheck(parts, "residual", children.residual());
+        }
+        Origin origin = checks.origin();
+        return "admit failed (rule " + origin.ruleRevision()
+                + ", source " + origin.sourceIdentity() + "@" + origin.sourceRevision()
+                + "): " + String.join("; ", parts);
+    }
+
+    private static <P> void addCheck(List<String> parts, String name, CheckResult<ConditionFailure<P>> check) {
+        if (check instanceof CheckResult.Mismatched<ConditionFailure<P>>(var failure)) {
+            parts.add(detail(name, failure));
+        }
+    }
+
+    private static <P> String detail(String name, ConditionFailure<P> failure) {
+        return name + " expected " + failure.expected() + ", actual " + failure.actual();
     }
 }

@@ -1,4 +1,4 @@
-import { type ProjectionDigest, freezeProjectionDigests } from "./digest.ts";
+import { type ProjectionDigests, projectionDigests } from "./digest.ts";
 import type { Equality } from "./comparison.ts";
 
 export class ResidualSet<R> {
@@ -32,7 +32,7 @@ export type Certificate<S, Rev, C, Obs, R, E> = {
   readonly ruleRevision: string;
   readonly source: SourceRef<S, Rev>;
   readonly coordinate: C;
-  readonly digests: readonly ProjectionDigest[];
+  readonly digests: ProjectionDigests;
   readonly residuals: ResidualSet<R>;
   readonly observations: Obs;
   readonly evidence: E;
@@ -56,9 +56,24 @@ export function freezeCertificate<S, Rev, C, Obs, R, E>(
       revision: certificate.source.revision,
     }),
     coordinate: certificate.coordinate,
-    digests: freezeProjectionDigests(certificate.digests),
+    digests: projectionDigests(certificate.digests),
     residuals: residualSet(certificate.residuals.values),
     observations: certificate.observations,
     evidence: certificate.evidence,
+  });
+}
+
+export function freezeExpected<S, Rev, C, Obs, R>(
+  expected: Expected<S, Rev, C, Obs, R>,
+): Expected<S, Rev, C, Obs, R> {
+  return Object.freeze({
+    ruleRevision: expected.ruleRevision,
+    source: Object.freeze({
+      identity: expected.source.identity,
+      revision: expected.source.revision,
+    }),
+    coordinate: expected.coordinate,
+    observations: expected.observations,
+    residuals: residualSet(expected.residuals.values),
   });
 }

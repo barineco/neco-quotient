@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/string
@@ -5,10 +6,7 @@ import neco_quotient_certificate/certificate.{
   type Certificate, type Expected, Certificate, Expected, residual_set,
 }
 import neco_quotient_certificate/digest.{
-  type ProjectionDigest, CrossLanguage, ProjectionDigest,
-}
-import neco_quotient_certificate/failure.{
-  type Stage, Coordinate, Decode, Digest, Observations, Residual, Source,
+  type ProjectionDigests, CrossLanguage, ProjectionDigest,
 }
 import neco_quotient_certificate/rule_table.{type Rule, type RuleTable}
 import neco_quotient_certificate/source.{type SourceRef, SourceRef}
@@ -22,8 +20,6 @@ pub const observations = 3
 pub const evidence = 5
 
 pub const residuals = [2]
-
-pub const stages = [Decode, Source, Coordinate, Observations, Digest, Residual]
 
 pub type Fixture =
   Certificate(String, Int, Int, Int, Int, Int)
@@ -39,9 +35,8 @@ pub fn semantics(salt: String) -> Rule(String, Int, Int, Int, Int) {
     evidence: Int,
   ) {
     list.map(["graph", "metadata"], fn(projection) {
-      ProjectionDigest(
-        projection:,
-        digest: string.join(
+      let digest =
+        string.join(
           [
             salt,
             projection,
@@ -52,10 +47,13 @@ pub fn semantics(salt: String) -> Rule(String, Int, Int, Int, Int) {
             int.to_string(evidence),
           ],
           "|",
-        ),
-        scope: CrossLanguage("fixture@1"),
+        )
+      #(
+        projection,
+        ProjectionDigest(digest:, scope: CrossLanguage("fixture@1")),
       )
     })
+    |> dict.from_list
   }
 }
 
@@ -63,7 +61,7 @@ pub fn source() -> SourceRef(String, Int) {
   SourceRef(identity: "src", revision: 7)
 }
 
-pub fn digests() -> List(ProjectionDigest) {
+pub fn digests() -> ProjectionDigests {
   semantics("default")(source(), coordinate, observations, evidence)
 }
 
@@ -98,23 +96,34 @@ pub fn table_with(salt: String) -> RuleTable(String, Int, Int, Int, Int) {
   table
 }
 
-pub fn break_stage(cert: Fixture, stage: Stage) -> Fixture {
-  case stage {
-    Decode -> Certificate(..cert, rule_revision: "rule@2")
-    Source ->
-      Certificate(..cert, source: SourceRef(identity: "src", revision: 8))
-    Coordinate -> Certificate(..cert, coordinate: 9)
-    Observations -> Certificate(..cert, observations: 9)
-    Digest ->
-      Certificate(
-        ..cert,
-        digests: semantics("other")(
-          cert.source,
-          cert.coordinate,
-          cert.observations,
-          cert.evidence,
-        ),
-      )
-    Residual -> Certificate(..cert, residuals: residual_set([9]))
-  }
+pub fn break_decode(cert: Fixture) -> Fixture {
+  Certificate(..cert, rule_revision: "rule@2")
+}
+
+pub fn break_source(cert: Fixture) -> Fixture {
+  Certificate(..cert, source: SourceRef(identity: "src", revision: 8))
+}
+
+pub fn break_coordinate(cert: Fixture) -> Fixture {
+  Certificate(..cert, coordinate: 9)
+}
+
+pub fn break_observations(cert: Fixture) -> Fixture {
+  Certificate(..cert, observations: 9)
+}
+
+pub fn break_digest(cert: Fixture) -> Fixture {
+  Certificate(
+    ..cert,
+    digests: semantics("other")(
+      cert.source,
+      cert.coordinate,
+      cert.observations,
+      cert.evidence,
+    ),
+  )
+}
+
+pub fn break_residual(cert: Fixture) -> Fixture {
+  Certificate(..cert, residuals: residual_set([9]))
 }

@@ -1,31 +1,10 @@
 use std::fmt;
+use std::marker::PhantomData;
 
-/// 不一致を報告する照合の段階。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Stage {
-    Decode,
-    Source,
-    Coordinate,
-    Observations,
-    Digest,
-    Residual,
-}
+use crate::checks::{AdmissionChecks, Condition, Status};
 
-impl fmt::Display for Stage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = match self {
-            Stage::Decode => "decode",
-            Stage::Source => "source",
-            Stage::Coordinate => "coordinate",
-            Stage::Observations => "observations",
-            Stage::Digest => "digest",
-            Stage::Residual => "residual",
-        };
-        f.write_str(name)
-    }
-}
+const OPERATION: &str = "admit";
 
-/// 不一致の対象となる証明書のリビジョンと入力。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Origin {
     pub rule_revision: String,
@@ -33,72 +12,127 @@ pub struct Origin {
     pub source_revision: String,
 }
 
-/// 照合の失敗。
-///
-/// Rust の比較は全欄で行う。言語間の同一性は操作、段階、出所で比べ、期待値と実際の値は診断に限る。
+pub mod stage {
+    use crate::checks::Condition;
+
+    pub trait Stage {
+        const CONDITION: Condition;
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Decode;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Source;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Coordinate;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Observations;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Residual;
+
+    impl Stage for Decode {
+        const CONDITION: Condition = Condition::Decode;
+    }
+
+    impl Stage for Source {
+        const CONDITION: Condition = Condition::Source;
+    }
+
+    impl Stage for Coordinate {
+        const CONDITION: Condition = Condition::Coordinate;
+    }
+
+    impl Stage for Observations {
+        const CONDITION: Condition = Condition::Observations;
+    }
+
+    impl Stage for Residual {
+        const CONDITION: Condition = Condition::Residual;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Mismatch<P> {
+pub struct ConditionFailure<St, P> {
     pub operation: &'static str,
-    pub stage: Stage,
     pub expected: String,
     pub actual: String,
     pub origin: Origin,
     pub provenance: P,
-    pub contributing: Vec<Mismatch<P>>,
+    _stage: PhantomData<St>,
+}
+
+impl<St, P> ConditionFailure<St, P> {
+    pub(crate) fn new(expected: String, actual: String, origin: &Origin, provenance: &P) -> Self
+    where
+        P: Clone,
+    {
+        Self {
+            operation: OPERATION,
+            expected,
+            actual,
+            origin: origin.clone(),
+            provenance: provenance.clone(),
+            _stage: PhantomData,
+        }
+    }
+}
+
+impl<St: stage::Stage, P> ConditionFailure<St, P> {
+    pub fn condition(&self) -> Condition {
+        St::CONDITION
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mismatch<P> {
+    checks: AdmissionChecks<P>,
+}
+
+impl<P> Mismatch<P> {
+    pub(crate) fn new(checks: AdmissionChecks<P>) -> Self {
+        debug_assert!(!checks.all_matched());
+        Self { checks }
+    }
+
+    pub fn checks(&self) -> &AdmissionChecks<P> {
+        &self.checks
+    }
+
+    pub fn status_at(&self, condition: Condition) -> Status<'_, P> {
+        self.checks.status_at(condition)
+    }
+
+    pub fn origin(&self) -> &Origin {
+        self.checks.origin()
+    }
+
+    pub fn provenance(&self) -> &P {
+        self.checks.provenance()
+    }
 }
 
 impl<P> fmt::Display for Mismatch<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let failed: Vec<&str> = Condition::ALL
+            .into_iter()
+            .filter(|condition| matches!(self.status_at(*condition), Status::Mismatched))
+            .map(Condition::name)
+            .collect();
+        let origin = self.origin();
         write!(
             f,
-            "{} failed at stage {}: expected {}, actual {} (rule {}, source {}@{})",
-            self.operation,
-            self.stage,
-            self.expected,
-            self.actual,
-            self.origin.rule_revision,
-            self.origin.source_identity,
-            self.origin.source_revision,
+            "{} failed at {}: rule {}, source {}@{}",
+            OPERATION,
+            failed.join(", "),
+            origin.rule_revision,
+            origin.source_identity,
+            origin.source_revision,
         )
     }
 }
 
 impl<P: fmt::Debug> std::error::Error for Mismatch<P> {}
-
-#[cfg(test)]
-mod tests {
-    use super::{Mismatch, Origin, Stage};
-
-    fn sample(provenance: &'static str) -> Mismatch<&'static str> {
-        Mismatch {
-            operation: "admit",
-            stage: Stage::Digest,
-            expected: "a".into(),
-            actual: "b".into(),
-            origin: Origin {
-                rule_revision: "rule@1".into(),
-                source_identity: "src".into(),
-                source_revision: "7".into(),
-            },
-            provenance,
-            contributing: Vec::new(),
-        }
-    }
-
-    #[test]
-    fn equality_compares_every_field() {
-        let base = sample("caller");
-        assert_eq!(base, base.clone());
-        assert_ne!(base, sample("other"));
-
-        let mut with_contributing = sample("caller");
-        with_contributing.contributing.push(sample("caller"));
-        assert_ne!(base, with_contributing);
-    }
-
-    #[test]
-    fn mismatch_is_an_error_when_its_provenance_is_debug() {
-        fn assert_error<E: std::error::Error>(_: &E) {}
-        assert_error(&sample("caller"));
-    }
-}

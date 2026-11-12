@@ -1,6 +1,9 @@
 # 言語間の型対応
 
-証明書照合の共通概念を、Lean と五つの実装言語がどの型と識別子で表すかを定めます。各型が表す関係は、[用語索引](terminology.md) と [証明書](../certificate.md) を参照してください。
+証明書照合の共通概念を、Lean と五つの実装言語がどの型と識別子で表すかをまとめます。各型が表す関係は、次の文書に記載されています。
+
+- 用語の意味: [terminology.md](terminology.md)
+- 照合の条件: [docs/certificate.md](certificate.md)
 
 ## 共通概念と実装上の型
 
@@ -18,7 +21,7 @@ Lean と五つの実装言語は、共通概念を次の型名で表します。
 | リビジョンの重複 | `DuplicateRule` |
 | 照合済みの値 | `Checked` |
 | 不一致 | `Mismatch` |
-| 照合の段階 | `Stage` |
+| 照合の条件 | `Condition` |
 | 不一致の対象 | `Origin` |
 
 言語によって表し方が異なる項目:
@@ -34,7 +37,8 @@ Lean と五つの実装言語は、共通概念を次の型名で表します。
 | 照合の結果 | Lean | `Except` |
 | 照合の結果 | Python | `Checked` と `Mismatch` の和 |
 | 照合の結果 | Python 以外の実装言語 | `Result` |
-| 不一致の対象 | Lean | `provenance` に含める |
+| 精密化の判定の状態 | Lean | `RefinementStatus` |
+| 精密化の判定の状態 | 五つの実装言語 | `RefinementOutcome` |
 
 Lean の規則の表は、規則のリビジョンと規則の組からなるリストです。言語間の比較では、リビジョンが一意な表を入力に使います。
 
@@ -84,9 +88,9 @@ Gleam は型引数を小文字で表し、同じ順序を使います。
 | 観測 | `observations` | `observations` |
 | 証拠 | `evidence` | `evidence` |
 
-## 照合の段階
+## 照合の条件
 
-各言語は、次の文字列を同じ順序で使用します。
+各言語は、次の六つの条件を同じ並びで宣言します。
 
 1. `decode`: 規則のリビジョンと登録
 2. `source`: 入力参照

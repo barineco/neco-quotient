@@ -1,8 +1,3 @@
-/-
-MIT License
-
-Copyright (c) 2026 barineco
--/
 set_option autoImplicit false
 
 namespace NecoQuotient.Comparison.Digest

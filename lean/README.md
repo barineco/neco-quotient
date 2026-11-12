@@ -1,6 +1,6 @@
 # Lean workspace
 
-neco-quotient の定義と定理を検証する Lean 4 プロジェクトです。各モジュールが証明する性質は [Lean の定義と定理](../docs/lean.md) で説明します。
+neco-quotient の定義と定理を検証する Lean 4 プロジェクトです。各モジュールが証明する性質は [docs/lean.md](../docs/lean.md) で説明します。
 
 ## 必要な環境
 
@@ -18,7 +18,7 @@ lake build
 `lake build` は全ての定理を型検査し、次の二つの検査も行います。
 
 - `Axioms`: 公開する定理が標準の公理だけに依存すること
-- `Guards`: 照合済みの値を作れるのは `admit` だけであること
+- `Guards`: 照合済みの値を作れるのは照合の関数だけであること
 
 ## 他の Lean プロジェクトからの利用
 
@@ -42,8 +42,8 @@ import NecoQuotient.Certificate
 open NecoQuotient
 
 def recompute (_ : SourceRef String String) (_ : String) (_ : String) (evidence : String) :
-    List ProjectionDigest :=
-  [{ projection := "evidence", digest := evidence, scope := .crossLanguage "example" }]
+    ProjectionDigests :=
+  (NameMap.empty : ProjectionDigests).addNew "evidence" { digest := evidence, scope := .crossLanguage "example" }
 
 def certificate : Certificate String String String String String String where
   ruleRevision := "example@1"
@@ -63,10 +63,14 @@ def expected : Expected String String String String String where
 
 #eval match admit certificate expected recompute "caller" with
   | .ok _ => "accepted"
-  | .error m => s!"rejected: {m.expected}"
+  | .error m =>
+    match m.statusAt .digest with
+    | .matched => "digest matched"
+    | .mismatched => "digest mismatched"
+    | _ => "digest unchecked"
 
 example : ∃ k, admit (P := String) certificate expected recompute "caller" = .ok k :=
-  admit_complete rfl rfl rfl rfl rfl rfl
+  admit_complete rfl rfl rfl rfl (fun _ => rfl) rfl
 ```
 
 `#eval` の結果は `"accepted"` です。
@@ -78,5 +82,9 @@ example : ∃ k, admit (P := String) certificate expected recompute "caller" = .
 | `NecoQuotient` | ライブラリ | 定義と定理 |
 | `Comparison` | ライブラリ | 言語間の比較で使う事例の読み込み、正規 JSON、SHA-256 |
 | `certificate_compare` | 実行ファイル | 比較事例に Lean の照合を適用する |
+| `refinement_compare` | 実行ファイル | 精密化の判定の状態の比較事例に Lean の比較を適用する |
 
-比較事例を再生成する手順は [比較事例の README](../comparison/certificate-admit/README.md) にあります。
+比較事例を再生成する手順は、各事例の README にあります。
+
+- 証明書の照合: [comparison/certificate-admit/README.md](../comparison/certificate-admit/README.md)
+- 精密化の判定の状態: [comparison/refinement-outcome/README.md](../comparison/refinement-outcome/README.md)

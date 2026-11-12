@@ -2,7 +2,7 @@
 
 証明書を期待値と照合する crate です。
 
-照合の条件は [証明書](../../docs/certificate.md) で定めます。
+照合の条件は [docs/certificate.md](../../docs/certificate.md) に記載されています。
 
 ## 導入
 
@@ -19,8 +19,8 @@ neco-quotient-certificate = { git = "https://github.com/barineco/neco-quotient.g
 
 ```rust
 use neco_quotient_certificate::{
-    admit, Certificate, DigestScope, Expected, ProjectionDigest, ResidualSet, Rule, RuleTable,
-    SourceRef,
+    admit, Certificate, DigestScope, Expected, ProjectionDigest, ProjectionDigests, ResidualSet,
+    Rule, RuleTable, SourceRef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +38,7 @@ impl Rule<String, u64, u32, Vec<Observation>, u32> for DemoRule {
         coordinate: &u32,
         observations: &Vec<Observation>,
         evidence: &u32,
-    ) -> Vec<ProjectionDigest> {
+    ) -> ProjectionDigests {
         observations
             .iter()
             .map(|observation| {
@@ -46,14 +46,14 @@ impl Rule<String, u64, u32, Vec<Observation>, u32> for DemoRule {
                     Observation::Graph => "graph",
                     Observation::Metadata => "metadata",
                 };
-                ProjectionDigest {
-                    projection: projection.to_string(),
+                let digest = ProjectionDigest {
                     digest: format!(
                         "{}@{}:{}:{}",
                         source.identity, source.revision, coordinate, evidence
                     ),
                     scope: DigestScope::WithinRuntime("demo-observation@1".to_string()),
-                }
+                };
+                (projection.to_string(), digest)
             })
             .collect()
     }
@@ -87,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         residuals: ResidualSet::<String>::new([]),
     };
 
-    let checked = admit(&table, certificate, &expected, "caller provenance")?;
+    let checked = admit(&table, certificate, expected, "caller provenance")?;
     assert_eq!(checked.recomputed().len(), 2);
     Ok(())
 }
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - `Rule`: 射影ダイジェストを再計算する規則のトレイト
 - `VerifiedRefinement`: 精密化の前後の評価を、共通の入力参照に結び付ける
 
-型の言語間の対応は [言語間の型対応](../../docs/reference/type-correspondence.md) にあります。照合の定理は Lean の `Certificate` モジュールが証明し、この実装との対応は手動で確認しています。
+型の言語間の対応は [docs/type-correspondence.md](../../docs/type-correspondence.md) にあります。照合の定理は Lean の `Certificate` モジュールが証明し、この実装との対応は手動で確認しています。
 
 ## 検査
 
